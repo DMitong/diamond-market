@@ -7,6 +7,18 @@ pragma solidity ^0.8.0;
 /******************************************************************************/
 import {IDiamondCut} from "../interfaces/IDiamondCut.sol";
 
+// Marketplace Struct
+struct Order {
+    address creator;
+    address tokenAddress;
+    uint256 tokenID;
+    uint256 price;
+    bytes sig;
+    uint88 deadline;
+    bool isActive;
+    bool isExecuted;
+}
+
 library LibDiamond {
     error InValidFacetCutAction();
     error NotDiamondOwner();
@@ -47,6 +59,17 @@ library LibDiamond {
         mapping(bytes4 => bool) supportedInterfaces;
         // owner of the contract
         address contractOwner;
+        // ERC721
+        string name;
+        string symbol;
+        mapping(uint256 => address) _ownerOf;
+        mapping(address => uint256) _balanceOf;
+        mapping(uint256 => address) getApproved;
+        mapping(address => mapping(address => bool)) isApprovedForAll;
+        // Marketplace
+        mapping(uint256 => Order) orders;
+        address admin;
+        uint256 orderId;
     }
 
     function diamondStorage()
@@ -70,6 +93,15 @@ library LibDiamond {
         address previousOwner = ds.contractOwner;
         ds.contractOwner = _newOwner;
         emit OwnershipTransferred(previousOwner, _newOwner);
+    }
+
+    function setERC721Details(
+        string memory _name,
+        string memory _symbol
+    ) internal {
+        DiamondStorage storage ds = diamondStorage();
+        ds.name = _name;
+        ds.symbol = _symbol;
     }
 
     function contractOwner() internal view returns (address contractOwner_) {
@@ -251,8 +283,8 @@ library LibDiamond {
                 .facetFunctionSelectors[_facetAddress]
                 .functionSelectors[lastSelectorPosition];
             ds.facetFunctionSelectors[_facetAddress].functionSelectors[
-                    selectorPosition
-                ] = lastSelector;
+                selectorPosition
+            ] = lastSelector;
             ds
                 .selectorToFacetAndPosition[lastSelector]
                 .functionSelectorPosition = uint96(selectorPosition);
